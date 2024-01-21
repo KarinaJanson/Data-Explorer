@@ -6,16 +6,17 @@ from scipy.stats import pearsonr
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-import statsmodels 
+
 
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
+
 # Function to load data and display basic information
-def load_data(file):
+def load_data(file, encoding='utf-8'):
     if file.name.endswith('xlsx'):
         data = pd.read_excel(file)
     elif file.name.endswith('csv'):
-        data = pd.read_csv(file)
+        data = pd.read_csv(file, encoding=encoding)
     else:
         st.error("Unsupported file format. Please upload a CSV or Excel file.")
         return None
@@ -30,35 +31,44 @@ def load_data(file):
     return data[selected_columns]
 
 
-
-
-# Function to display missing, valid values, and outliers
+# Function to display missing, valid values, and outliers for numeric columns
 def display_missing_values(data):
     st.subheader("Missing, Valid Values, and Outliers")
-    
+
+    # Check if there are numeric columns
+    numeric_columns = data.select_dtypes(include=['number']).columns
+    if len(numeric_columns) == 0:
+        st.warning("No numeric columns found. Missing values, valid values, and outliers cannot be calculated.")
+        return
+
+    # Filter numeric columns
+    numeric_data = data[numeric_columns]
+
     # Missing and Valid Values
-    missing_values = data.isnull().sum()
-    valid_values = data.notnull().sum()
-    
+    missing_values = numeric_data.isnull().sum()
+    valid_values = numeric_data.notnull().sum()
+
     # Outliers using IQR method
-    Q1 = data.quantile(0.25)
-    Q3 = data.quantile(0.75)
+    Q1 = numeric_data.quantile(0.25)
+    Q3 = numeric_data.quantile(0.75)
     IQR = Q3 - Q1
-    outliers_count = ((data < (Q1 - 1.5 * IQR)) | (data > (Q3 + 1.5 * IQR))).sum()
+    outliers_count = ((numeric_data < (Q1 - 1.5 * IQR)) | (numeric_data > (Q3 + 1.5 * IQR))).sum()
 
     missing_valid_df = pd.DataFrame({
         'Variable': missing_values.index,
         'Missing Values': missing_values.values,
         'Valid Values': valid_values.values,
         'Outliers Count': outliers_count.values,
-        'Min': data.min(),
-        'Max': data.max(),
-        'Mean': data.mean(),
-        'Std Dev': data.std(),
-        'Median': data.median(),
+        'Min': numeric_data.min(),
+        'Max': numeric_data.max(),
+        'Mean': numeric_data.mean(),
+        'Std Dev': numeric_data.std(),
+        'Median': numeric_data.median(),
     })
 
     st.write(missing_valid_df)
+
+
     
 
 # Function to detect and display outliers using box plots
